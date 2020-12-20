@@ -36,7 +36,7 @@ Activity data
 
         utils
             - fitbit_cleaning_utils.r
-                - act cleaning functions
+                - fitbit cleaning functions
             - fitbit_meta.r
                 - map raw data to meta data for quicker retrieval
             - fitbit_schema_utils.r
@@ -68,8 +68,8 @@ Steps Order
     1. Cleaning
         - removes outliers data in hr data
 
-    3. Featurising
+    2. Featurising
         - various hr and fs daily level features
 
-    4. Post featurising
+    3. Post featurising
         - add features such as day of week, season etc to featurised data
