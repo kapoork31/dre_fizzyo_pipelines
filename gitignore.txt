@@ -17,6 +17,7 @@
 # Output files from R CMD check
 /*.Rcheck/
 
+# folders to ignore
 EDA/
 legacy/
 legacy_utils/
