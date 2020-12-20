@@ -60,7 +60,7 @@ ACT
             - act_validation_utils_kunal.r
                 - functions to validate raw act data
             - pipeline_utils_kunal_2.r
-                - universal pipeline orchestrator function
+                - universal pipeline orchestrator functions
             - treatment_grouping_utils_kunal.r
                 - functions to create meta tables
 
