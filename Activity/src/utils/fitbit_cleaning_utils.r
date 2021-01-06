@@ -47,7 +47,6 @@ prop_diff <- function(big, small){
     return(res)
 }
 
-
 remove_rep_points_data <- function(data){
 
     # remove repetive points from data frame
@@ -64,22 +63,29 @@ remove_rep_points_data <- function(data){
     rep_inds <- c()
     if (nrow(data) >= 3){
 
-        for (i in 2:(nrow(data) - 1)){
+        for (i in 1:(nrow(data) - 1)){
 
             cur <- data$value[i]
             nex <- data$value[i + 1]
 
-            if (cur == nex & i < nrow(data) - 1){
+            if (cur == nex & i < (nrow(data) - 1){
 
                 rep <- rep + 1
+
+            }else if (cur == nex & i == (nrow(data) - 1){
+
+                rep <- rep + 1
+                rep_inds <- c(rep_inds, ( (i + 1) - rep) : (i + 1))
+                rep <- 0
 
             }else if ( (cur != nex & rep >= 10) |
                 (i == nrow(data) - 1 & rep >= 10)){
 
                 rep_inds <- c(rep_inds, (i - rep):i)
                 rep <- 0
-            }
-            if (cur != nex){
+
+            }else if (cur != nex & rep < 10){
+
                 rep <- 0
             }
 
@@ -92,7 +98,6 @@ remove_rep_points_data <- function(data){
     }
 
 }
-
 
 remove_random_points <- function(data){
 
@@ -157,7 +162,7 @@ remove70_leniant_1 <- function(data){
             prev <- seventy[i - 1]
             cur <- seventy[i]
 
-            while (cur == prev + 1 & i <= length(seventy) - 1){
+            while (cur == prev + 1 & i <= length(seventy)){
 
                 remove70s <- c(remove70s, cur)
                 i <- i + 1
