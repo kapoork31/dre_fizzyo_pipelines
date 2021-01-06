@@ -1,11 +1,12 @@
 #############################################################
-##  This file runs the featurise step on act data
+##  This file runs the integration featurise step test on act data
 ##
 #############################################################
 
 ###################################
 # Load libraries and source files
 ########################## #########
+
 library(dplyr)
 library(lubridate)
 library(ggplot2)

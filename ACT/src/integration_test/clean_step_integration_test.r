@@ -1,11 +1,12 @@
 #############################################################
-##  This file runs the clean step on act data
+##  This file runs the integration clean step test on act data
 ##
 #############################################################
 
 ###################################
 # Load libraries and source files
 ########################## #########
+
 library(dplyr)
 library(lubridate)
 library(ggplot2)
@@ -78,19 +79,19 @@ write_session_meta_data_raw(
     raw_meta_table_name
 )
 
-    process_unprocessed_patients(
-      conn,
-      input_table_name,
-      output_table_name,
-      start_date,
-      end_date,
-      time_col_name,
-      devices_clean_table_name,
-      link_table,
-      pipeline_step_fn,
-      raw_meta_table_name,
-      clean_meta_table_name
-    )
+process_unprocessed_patients(
+    conn,
+    input_table_name,
+    output_table_name,
+    start_date,
+    end_date,
+    time_col_name,
+    devices_clean_table_name,
+    link_table,
+    pipeline_step_fn,
+    raw_meta_table_name,
+    clean_meta_table_name
+)
 
 nrow_cleaned_sessions <- dbGetQuery(conn,
     sprintf("SELECT count(distinct(session_id)) FROM \"%s\"",

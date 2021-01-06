@@ -1,5 +1,5 @@
 #############################################################
-##  This file runs labelelling step on the act data
+##  This file runs the integration post featurise step test on act data
 ##
 #############################################################
 
