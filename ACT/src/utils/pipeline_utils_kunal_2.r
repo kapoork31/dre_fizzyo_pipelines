@@ -206,6 +206,25 @@ clean_step <- function(conn, pid, input_table_name, output_table_name,
     start_date, end_date, devices_data, raw_meta_table_name,
     clean_meta_table_name) {
 
+  #  Perform the ACT clean step on raw data
+  #  for a patient on a date range
+  #
+  # Args:
+  #  conn <PostgreSQLConnection> : PostgreSQL connection object
+  #  pid <Char> : Patient Id
+  #  input_table_name <Char> : Name of the input table that an ACT pipeline
+  #                          step would read from.
+  #  output_table_name <Char> : Name of the output table that an ACT pipeline
+  #                           step would write to.
+  #  startDate <Date> : The ACT pipeline step will process patient data from
+  #                     startDate to endDate.
+  #  endDate <Date> : The ACT pipeline step will process patient data from
+  #                   startDate to endDate.
+  #  devices_data <data.frame> : Formatted devices data composed of all columns
+  #                   in ActDevicesSchema and a patient_id <chr> column).
+  # Returns:
+  #   None
+
     writeLines(pid)
     un_processed_sessions <- tbl(conn, raw_meta_table_name) %>%
         filter(patient_id == pid &
@@ -273,6 +292,25 @@ clean_step <- function(conn, pid, input_table_name, output_table_name,
 label_step <- function(conn, pid, input_table_name, output_table_name,
     start_date, end_date, devices_data, raw_meta_table_name,
     meta_act_table_name, label_meta_table_name) {
+
+  #  Perform the ACT label step on cleaned data
+  #  for a patient on a date range
+  #
+  # Args:
+  #  conn <PostgreSQLConnection> : PostgreSQL connection object
+  #  pid <Char> : Patient Id
+  #  input_table_name <Char> : Name of the input table that an ACT pipeline
+  #                          step would read from.
+  #  output_table_name <Char> : Name of the output table that an ACT pipeline
+  #                           step would write to.
+  #  startDate <Date> : The ACT pipeline step will process patient data from
+  #                     startDate to endDate.
+  #  endDate <Date> : The ACT pipeline step will process patient data from
+  #                   startDate to endDate.
+  #  devices_data <data.frame> : Formatted devices data composed of all columns
+  #                   in ActDevicesSchema and a patient_id <chr> column).
+  # Returns:
+  #   None
 
     meta <- dbGetQuery(conn,
         sprintf("SELECT * FROM \"%s\"", meta_act_table_name))

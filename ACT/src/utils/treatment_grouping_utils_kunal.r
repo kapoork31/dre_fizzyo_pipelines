@@ -27,6 +27,7 @@ write_session_meta_data <- function(conn,
   # session_start <datetime> | session_end <datetime>
   #
   # Processes the entire set of historical data.
+  # done for converting cleaned data to meta
 
   session_meta_data <- tbl(conn, pressure_table_name) %>%
     group_by(patient_id, session_id) %>%
@@ -70,6 +71,16 @@ write_session_meta_data_lbld <- function(conn,
                                             meta_data_table_name
                                             ) {
 
+    # Group sessions that are part of a treatment,
+    # i.e. sessions that are within 1 hour of each other.
+    # Builds the metadata table with format:
+    #
+    # patient_id <chr> | treatment_id <chr> |
+    # session_start <datetime> | session_end <datetime>
+    #
+    # Processes the entire set of historical data.
+    # Done for converting labelled act data
+
     session_meta_data <- tbl(conn, pressure_table_name) %>%
     group_by(patient_id, treatment_id) %>%
     summarize(session_start = min(time, na.rm = TRUE),
@@ -85,6 +96,16 @@ write_session_meta_data_raw <- function(conn,
                                         pressure_table_name,
                                         meta_data_table_name
                                         ) {
+
+    # Group sessions that are part of a treatment,
+    # i.e. sessions that are within 1 hour of each other.
+    # Builds the metadata table with format:
+    #
+    # patient_id <chr> | session_id <chr> |
+    # session_start <datetime> | session_end <datetime>
+    #
+    # Processes the entire set of historical data.
+    # Done for converting raw act data to meta data
 
     session_meta_data <- tbl(conn, pressure_table_name) %>%
     select("patient_id" = patient_record_id, "session_id" = id, time) %>%

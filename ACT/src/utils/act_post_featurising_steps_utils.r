@@ -1,3 +1,14 @@
+################################################################################
+## This file contains the following act post featurisation functions:
+##
+## post_featurisation: recieve featurised act data and call
+##  various post feauturisation functions
+## merge_act_games: add games to act data
+## actual_date: get stage dates per person
+## merge_stages_games: merge stage dates with act data
+## merge_gender_age: add varioous features like gender, age, week etc to act data
+################################################################################
+
 library(DBI)
 library(dplyr)
 library(dbplyr)
@@ -6,6 +17,16 @@ library(lubridate)
 post_featurisation <- function(featurised_act_table_name, games_data,
                                 sex_table, link_name, merged_table_name,
                                 conn){
+
+    # call all post featurisation functions
+    #
+    # Args:
+    #   featurised_act_table_name: name of featurised act table | string
+    #   games_data: name of games table | string
+    #   sex_table: name of gender table | string
+    #   link_name: name of patient link table | string
+    #   merged_table_name: name of post featurised fitbit table | string
+    #   conn: db connection | string
 
     link <- dbGetQuery(conn, sprintf("SELECT * FROM \"%s\"", link_name))
     games_merged <- merge_act_games(featurised_act_table_name,
@@ -26,6 +47,15 @@ post_featurisation <- function(featurised_act_table_name, games_data,
 
 
 merge_act_games  <- function(featurised_act_table_name, games_data, link, conn){
+
+    # add games to act data
+    #
+    # Args:
+    #   featurised_act_table_name: name of featurised act table | string
+    #   games_data: name of games table | string
+    #   link_name: name of patient link table | string
+    #   conn: db connection | string
+    # return: returned act_merged | df
 
     act_merged <- data.frame()
     act  <- dbGetQuery(conn,
@@ -67,6 +97,12 @@ merge_act_games  <- function(featurised_act_table_name, games_data, link, conn){
 
 
 actual_date <- function(p_data){
+
+    # get stage data per person
+    #
+    # Args:
+    #   p_data: link data for a person
+    # return: list of stage dates | vec
 
     start_date <- p_data$date_recruited + 1
     fdate <- p_data$date_feedback_start
@@ -119,6 +155,13 @@ actual_date <- function(p_data){
 
 merge_stages_games <- function(act_games, link){
 
+    # get stage data per person
+    #
+    # Args:
+    #   act_games: merged act and gaming data | string
+    #   link_name: name of patient link table | string
+    # return: merged data act_phases_merged | df
+
     act_phases_merged <- data.frame()
     act_games$phase  <-  "blind"
 
@@ -141,6 +184,14 @@ merge_stages_games <- function(act_games, link){
 
 
 merge_gender_age <- function(games_phases_merged, sex_table, link, conn){
+
+    # get stage data per person
+    #
+    # Args:
+    #   games_phases_merged: merged act and gaming data | string
+    #   link_name: name of patient link table | string
+    #   sex_table: name of gender table | string
+    # return: merged data demographics | df
 
     sex <- dbGetQuery(conn, sprintf("SELECT * FROM \"%s\"", sex_table))
 

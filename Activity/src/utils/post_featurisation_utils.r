@@ -15,7 +15,7 @@ post_featurisation <- function(featurised_fitbit_table,
                                 conn
                                 ){
 
-    # convert raw hr to meta with userid,name
+    # call merge_gender_age function
     #
     # Args:
     #   featurised_fitbit_table: name of featurised fitbit table | string
@@ -44,7 +44,7 @@ post_featurisation <- function(featurised_fitbit_table,
 
 merge_gender_age <- function(featurised_fitbit_table, sex_table, link, conn){
 
-    # convert raw hr to meta with userid,name
+    # add features to featurised fitbit data
     #
     # Args:
     #   featurised_fitbit_table: name of featurised fitbit table | string
