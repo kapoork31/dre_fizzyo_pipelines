@@ -1,3 +1,10 @@
+################################################################################
+## This file contains the following fitbit validation creation functions:
+##
+## validate_data_schema: compare data to appropriate schema
+## contains various hr and step check functions, not currently implemented
+################################################################################
+
 source(file.path("~",
                 "scripts",
                 "fitbit_pipeline_cleaning_kunal",

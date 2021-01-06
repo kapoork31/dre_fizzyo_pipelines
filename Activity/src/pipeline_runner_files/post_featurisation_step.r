@@ -1,3 +1,19 @@
+#############################################################
+##  This file runs the post featurisation pipeline
+
+#############################################################
+
+###################################
+# Load libraries and source files
+########################## #########
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(purrr)
+library(DBI)
+library(tidyr)
+library(rlang)
+
 source(file.path("~",
                 "scripts",
                 "fitbit_pipeline_cleaning_kunal",

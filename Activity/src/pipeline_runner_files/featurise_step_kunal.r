@@ -1,8 +1,6 @@
 #############################################################
-##  This file extracts the features from the fitbit dataset
-##
-## Input datasets: raw footsteps, heart rate data
-## Outputs: featurised dataset in the DRE
+##  This file runs the featurisation pipeline
+
 #############################################################
 
 ###################################

@@ -1,5 +1,5 @@
 #############################################################
-##  This file runs the clean step on act data
+##  This file runs tests on utils folder code
 ##
 #############################################################
 
@@ -68,10 +68,6 @@ source(
         "post_featurisation_tests.r"
     )
 )
-
-########################
-# integration tests
-
 
 ########################
 # integration tests

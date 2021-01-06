@@ -1,6 +1,7 @@
 #############################################################
-# post featurisation integration test
-# tests post featurisation process works as expected
+##  This file runs post featurisation integration test
+##  post featurises small amount of data
+##  checks resulting dataset has correct number of rows
 #############################################################
 
 ###################################

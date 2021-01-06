@@ -1,3 +1,11 @@
+################################################################################
+## This file contains the following fitbit post featurisation functions:
+##
+## post_featurisation: recieve featurised fitbit data and call
+##  various post feauturisation functions
+## merge_gender_age: add columns to featurise data like week, age etc
+################################################################################
+
 mvpa_column <- "mvpa_15_prev_method"
 
 post_featurisation <- function(featurised_fitbit_table,
@@ -6,6 +14,15 @@ post_featurisation <- function(featurised_fitbit_table,
                                 output_table_name,
                                 conn
                                 ){
+
+    # convert raw hr to meta with userid,name
+    #
+    # Args:
+    #   featurised_fitbit_table: name of featurised fitbit table | string
+    #   sex_table: name of gender table | string
+    #   link_name: name of patient link table | string
+    #   output_table_name: name of post featurised fitbit table | string
+    #   conn: db connection | string
 
     sql_code <- sprintf("SELECT * FROM \"%s\"", link_name)
     link <- dbGetQuery(conn, sql_code)
@@ -26,6 +43,17 @@ post_featurisation <- function(featurised_fitbit_table,
 
 
 merge_gender_age <- function(featurised_fitbit_table, sex_table, link, conn){
+
+    # convert raw hr to meta with userid,name
+    #
+    # Args:
+    #   featurised_fitbit_table: name of featurised fitbit table | string
+    #   sex_table: name of gender table | string
+    #   link_name: name of patient link table | string
+    #   conn: db connection | string
+    #   returns: demographics:
+    #               featurised fitbit table with
+    #               new features such as week, age etc
 
     sex <- dbGetQuery(conn, sprintf("SELECT * FROM \"%s\"", sex_table))
     fitbit_featurised <- dbGetQuery(conn,

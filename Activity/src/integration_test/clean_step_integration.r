@@ -1,6 +1,7 @@
 #############################################################
-##  This file runs cleaning pipeline
-##
+##  This file runs cleaning step integration test
+##  cleans a tiny chunk of data
+## checks produced dataset has correct number of rows
 #############################################################
 
 ###################################

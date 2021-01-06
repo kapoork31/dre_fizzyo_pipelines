@@ -931,7 +931,7 @@ featurise_fitbit_combined <- function(
     select(-data) %>%
     unnest()
 
-
+    # get mvpa threshold
     thresh_data  <- get_active_minutes_reg_thresh(
                         patient,
                         d,
@@ -939,6 +939,7 @@ featurise_fitbit_combined <- function(
                         conn
                     )
 
+    get # all 3 mvpa thresholds and add to returned df
     thresh <- (thresh_data %>% pull(!!as.name(thresh14)))[1]
     thresh_low <- (thresh_data %>% pull(!!as.name(thresh14_low)))[1]
     thresh_high <- (thresh_data %>% pull(!!as.name(thresh14_high)))[1]
@@ -947,9 +948,11 @@ featurise_fitbit_combined <- function(
     featurised_fitbit_data$thresh_low <- thresh_low
     featurised_fitbit_data$thresh_high <- thresh_high
 
+    # get hr > thresh and fs data
     active_hr <- fitbit_data %>% filter(!!as.name(hr_column) > thresh)
     fs_data <- fitbit_data %>% select(!!as.name(fs_column), time)
 
+    # get times for hr > thresh and with steps in prev 15 minutes
     times_in <- calc_mvpa_count_neighbour_times_prev(
                     active_hr,
                     fs_data,
@@ -957,6 +960,7 @@ featurise_fitbit_combined <- function(
                     window_size = 15
                 )
 
+    # get data where hr <= thresh and add mvpa values to returned df
     non_active_hr <- fitbit_data %>% filter(!!as.name(hr_column) <= thresh)
     featurised_fitbit_data$mvpa_15_prev_method <- length(times_in)
     featurised_fitbit_data$mvpa_15_prev_method2 <- consecutive(times_in, 2)
@@ -965,12 +969,14 @@ featurise_fitbit_combined <- function(
     featurised_fitbit_data$mvpa_15_prev_method10 <- consecutive(times_in, 10)
     featurised_fitbit_data$mvpa_15_prev_method20 <- consecutive(times_in, 20)
 
+    # mvpa between 8-21 added to returned df
     featurised_fitbit_data$mvpa_15_prev_method_ap_8_21 <-
         ifelse ( (length(times_in) > 0),
             length(times_in[hour(times_in) >= apst & hour(times_in) <= aped ]),
             0
         )
 
+    # add switch features to returned df
     featurised_fitbit_data$switch_thresh <- calc_switch_th(
                 fitbit_data %>% pull(!!as.name(hr_column)), thresh)
 
@@ -980,6 +986,8 @@ featurise_fitbit_combined <- function(
     featurised_fitbit_data$switch_thresh_high <- calc_switch_th(
                 fitbit_data %>% pull(!!as.name(hr_column)), thresh_high)
 
+    # get fs data when fs > 70 per minute
+    # add various active step features to returned df
     active_steps <- fitbit_data %>%
                 filter(!!as.name(fs_column) > step_active)
 
@@ -1004,6 +1012,7 @@ featurise_fitbit_combined <- function(
     featurised_fitbit_data$active_mins_hr_steps_thresh20 <-
                 consecutive(active_mins_hr_steps, 20)
 
+    # add combo step and mvpa features to returned df
     featurised_fitbit_data$step_norm_thresh_mvpa <-
                 calc_step_norm(times_in, fs_data)
 

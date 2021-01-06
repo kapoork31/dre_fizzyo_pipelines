@@ -2,11 +2,10 @@
 # Outlier Handling Utilities
 #
 # is_tukey_outlier: Helper function, used to determine whether an observation is an outlier 
-#                 according to Tukey's method
-# PlotColumnDistribution: Helper function that returns 2 plots correspondsing to the boxplots and 
-#                         histograms of a data column
+#   according to Tukey's method
 # IdentifyOutliers: Compute the outliers for each column and display outlier statistics
 # remove_outliers: Remove outliers from specified columns in the data
+# outlier_func3: label outliers in given columns in a dataframe
 ##################################################################################################
 
 library(dplyr)
@@ -143,6 +142,17 @@ SelectNumericColumns <- function(df, include.logical = FALSE) {
 }
 
 outlier_func3 <- function(cluster_df, k_feature_names) {
+
+    # Select numeric column from a dataframe and throws an error if the
+    # dataframe contains no numeric columns
+    #
+    # Args:
+    #   cluster_df: dataframe
+    #   k_feature_names: names of features to check for outliers
+    #                   (defalt FALSE)
+    #
+    # Returns: cluster_df: df with outliers labeled per row
+
     identify_outliers(cluster_df, k_feature_names)
     nrow(cluster_df)
     print("********** Removing outliers...")

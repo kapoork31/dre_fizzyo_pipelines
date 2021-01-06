@@ -1,3 +1,11 @@
+################################################################################
+## This file contains the following schema for fitbit data
+##
+## features_2020_12_schema: schema for featurised fitbit data
+## fitbit_clean_hr_schema: schema for cleaned hr data
+## post_features_schema_2020_12: schema for post featurised fitbit data
+################################################################################
+
 features_2020_12_schema <- data.frame(
   userid = character(),
   date = lubridate::ymd(),

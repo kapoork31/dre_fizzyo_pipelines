@@ -1,9 +1,10 @@
 ################################################################################
-# batching_utils.R
-#
-#
-# Available functions:
-#
+## This file contains the following fitbit pipeline functions:
+##
+## clean_all: take in list of patients and run cleaning on them
+## featurise_all: take in list of patients and run cleaning featurising on them
+## clean_step: step to clean given person data between 2 dates
+## featurise_step: step to featurise_step given person data between 2 dates
 ################################################################################
 
 source(file.path("~",
@@ -37,6 +38,14 @@ clean_all <- function(conn, start_date, end_date,
                       input_table_name, output_table_name,
                       link, raw_hr_meta, clean_hr_meta){
 
+  # call clean step function on list of people betwene 2 dates
+  #
+  # Args:
+  #   start_date: start_date of data to clean | date
+  #   end_date: end of data to clean | date
+  #   id_list: list of people to clean
+  #   ... various other specific datatable names
+
   patient_ids <- fetch_all_pids_from_link(link)
   for (patient_id in patient_ids) {
 
@@ -50,6 +59,14 @@ featurise_all <- function(conn, start_date, end_date,
                          input_table_name_hr, input_table_name_fs,
                          hr_clean_meta, fs_meta, output_table_name,
                          link, output_table_name_meta, thresh_table){
+
+  # call featurise step function on list of people betwene 2 dates
+  #
+  # Args:
+  #   start_date: start_date of data to featurise | date
+  #   end_date: end of data to featurise | date
+  #   id_list: list of people to featurise
+  #   ... various other specific datatable names
 
   patient_ids <- fetch_all_pids_from_link(link)
   for (patient_id in patient_ids) {
@@ -80,6 +97,14 @@ clean_step <- function(conn, start_date, end_date, patient,
                        input_table_name, output_table_name,
                        raw_hr_meta, clean_hr_meta) {
 
+  # clean data for a single person given start and end date
+  #
+  # Args:
+  #   start_date: start_date of data to clean | date
+  #   end_date: end of data to clean | date
+  #   patient: id of person to clean
+  #   ... various other specific datatable names
+
   writeLines(patient)
   hr_metadata <- tbl(conn, raw_hr_meta) %>%
     filter(userid == patient &
@@ -88,6 +113,7 @@ clean_step <- function(conn, start_date, end_date, patient,
     select(date) %>%
     distinct() %>%
     collect()
+
   if (nrow(hr_metadata) == 0) {
 
     writeLines(sprintf("No data for patient %s exists", patient))
@@ -171,7 +197,16 @@ featurise_step <- function(conn, start_date, end_date, patient,
                             hr_clean_meta, fs_meta, output_table_name,
                             link, output_table_name_meta, thresh_table) {
 
+  # featurise data for a single person given start and end date
+  #
+  # Args:
+  #   start_date: start_date of data to featurise | date
+  #   end_date: end of data to featurise | date
+  #   patient: id of person to featurise
+  #   ... various other specific datatable names
+
   writeLines(patient)
+
   date_rec <- link[link$fizzyo_hub_id == patient, "date_recruited"]
   hr_metadata <- tbl(conn, hr_clean_meta) %>%
     filter(userid == patient &
