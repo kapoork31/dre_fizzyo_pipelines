@@ -1,5 +1,5 @@
 #############################################################
-##  This file runs labelelling step on the act data
+##  This file runs post featurisation step on the act data
 ##
 #############################################################
 

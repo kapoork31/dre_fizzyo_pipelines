@@ -1,3 +1,12 @@
+#############################################################
+##  This file runs the labelling step on blind act data
+##
+#############################################################
+
+###################################
+# Load libraries and source files
+########################## #########
+
 source("~/scripts/ACT_v3/act_pipeline/src/utils/pipeline_utils_kunal_3.R")
 source("~/scripts/ACT_v3/act_pipeline/src/utils/treatment_grouping_utils_kunal.R")
 #source("~/scripts/ACT_v3/act_pipeline/tests/labelling_tests.R")
