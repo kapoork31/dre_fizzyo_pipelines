@@ -238,29 +238,17 @@ check_dates <- function(df, link_table) {
   #   or if stepdata date is < recruit time, else a success
   #   message
 
-  link_table <- rename(link_table, userid = !! as.name(userid_column)) %>%
-    group_by(userid) %>%
-    mutate(entryid = 1:n()) %>%
-    select("userid", "date_recruited", "entryid")
+  rec_date <- link_table %>%
+                filter(fizzyo_hub_id == df$userid[1]) %>%
+                pull(date_recruited)
 
-  df <- df %>%
-    group_by(userid) %>%
-    mutate(entryid = 1:n())
-
-  df <- left_join(df, link_table, by = c("userid"))
-  today <- Sys.Date()
-  tz <- base::format(df$time[1], format = "%Z")
-
-  if (tz == "BST"){
-
-      df$time <- df$time + 3600
-  }
+  today <- Sys.time()
 
   if (any(df$time > today)){
 
     stop("date check unsuccessful: date > today")
   }
-  else if (any(df$time < df$date_recruited)){
+  else if (any(df$time < rec_date)){
     stop("date check unsuccessful: date < recruit date")
   } else {
     return("date check successful")

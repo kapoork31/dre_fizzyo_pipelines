@@ -159,17 +159,21 @@ clean_step <- function(conn, start_date, end_date, patient,
     return()
   }
 
+  data_hr_raw_total <- tbl(conn, input_table_name) %>%
+    filter(userid == patient) %>%
+    mutate(date = to_date(time, "YYYY-MM-DD")) %>%
+    filter(date %in% remaining_days) %>%
+    select(-c("date")) %>%
+    collect()
+
   for (i in 1:(length(remaining_days) - 1)) {
 
     st_date <- remaining_days[i]
     e_data <- st_date + 1
-    data <- tbl(conn, input_table_name) %>%
-      filter(userid == patient &
-               time >= st_date &
-               time < e_data) %>%
-      arrange(time) %>%
-      collect()
 
+    data <- data_hr_raw_total %>%
+      filter(time >= st_date & time < e_data) %>%
+      arrange(time)
 
     cleaned_data <- remove70_leniant_1(data)
     cleaned_data <- remove_rep_points_data(cleaned_data)
@@ -190,7 +194,6 @@ clean_step <- function(conn, start_date, end_date, patient,
   }
 
 }
-
 
 featurise_step <- function(conn, start_date, end_date, patient,
                             input_table_name_hr, input_table_name_fs,
@@ -257,30 +260,44 @@ featurise_step <- function(conn, start_date, end_date, patient,
     return ()
   }
 
+
+  data_hr_clean_total <- tbl(conn, input_table_name_hr) %>%
+    filter(userid == patient) %>%
+    mutate(date = to_date(time, "YYYY-MM-DD")) %>%
+    filter(date %in% remaining_days) %>%
+    select(-c("date")) %>%
+    collect()
+
+  data_fs_total <- tbl(conn, input_table_name_fs) %>%
+    filter(userid == patient) %>%
+    mutate(date = to_date(time, "YYYY-MM-DD")) %>%
+    filter(date %in% remaining_days) %>%
+    select(-c("date")) %>%
+    collect()
   for (d in as.list(remaining_days)){
 
     st <- d
     ed <- d + 1
-    data_hr <- tbl(conn, input_table_name_hr) %>%
-      filter(userid == patient &
-               time >= st &
-               time < ed) %>%
-      arrange(time) %>%
-      collect()
+    data_hr <- data_hr_clean_total %>%
+      filter(time >= st & time < ed) %>%
+      arrange(time)
 
-    data_fs <- tbl(conn, input_table_name_fs) %>%
-      filter(userid == patient &
-               time >= st &
-               time < ed) %>%
-      arrange(time) %>%
-      collect()
+    data_fs <- data_fs_total %>%
+      filter(time >= st & time < ed) %>%
+      arrange(time)
 
     if (nrow(data_fs) > 1 & nrow(data_hr) > 1 & min(data_hr$value) > 0){
       # make sure data for both hr and fs exist
+      data_tz <- base::format(data_hr$time[1], format = "%Z")
+
+      data_hr$time <- format(data_hr$time, tz = data_tz, usetz = TRUE)
+      data_fs$time <- format(data_fs$time, tz = data_tz, usetz = TRUE)
 
       validate_steps_data(data_fs, link)
       Validate_hr_data(data_hr, link)
+
       raw_fitbit_data <- combine_foot_steps_hr(data_fs, data_hr)
+
       featurised_fitbit_data <- featurise_fitbit_combined(
                                             raw_fitbit_data,
                                             conn,
@@ -290,11 +307,9 @@ featurise_step <- function(conn, start_date, end_date, patient,
                                             ) %>%
         mutate_if(is.integer, as.numeric)
 
-
       validate_data_schema(featurised_fitbit_data,
                            features_2020_12_schema
                           )
-
       dbWriteTable(conn, output_table_name, featurised_fitbit_data,
                    append = TRUE, row.names = FALSE
                   )
