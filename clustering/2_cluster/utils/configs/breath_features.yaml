@@ -1,0 +1,10 @@
+default:
+  features:
+    - "patientId"
+    - "sessionId"
+    - "breathCount"
+    - "meanBreathAmplitude"
+    - "meanBreathDuration"
+  ignoreDuringClustering:
+    - "patientId"
+    - "sessionId"

@@ -1,0 +1,6 @@
+default: 
+  - kmeans: 
+    - params: 
+      - numClusters: 3
+    - scale: true
+    - type: kmeans

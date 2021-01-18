@@ -1,0 +1,6 @@
+default:
+  params:
+    numClusters: 3
+    runsMaxRange: 10
+    runs: true
+  scale: true
