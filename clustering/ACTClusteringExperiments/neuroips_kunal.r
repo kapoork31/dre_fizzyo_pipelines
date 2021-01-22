@@ -575,6 +575,10 @@ Experiment3 <- function() {
 
     #OnePatientCluster_no_umap(cRes$clusterDF, cRes$pca, cRes$kpcaTF, cRes$uPcaDf)
     #SaveOutput(cRes$outDf, "act_kmeans_exp_viz2", cRes$centroids, "act_kmeans_centroids_viz2")
+
+    # cRes$clusterDF contians all data with cluster features, pc1, pc2 and cluster assignment so this is the money dataframe
+    # cRes$centroids contains center of each cluster for each cluster feature
+
     pca_data <- test_patient('2c5f35f9-68ba-4469-aae3-9fad7e3dd274', cRes$clusterDF, cRes$pca)
 }
 
