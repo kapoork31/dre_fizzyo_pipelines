@@ -15,11 +15,15 @@ link = xap.read_table('linkMoresecure')
 # - viz clustering 
 # - plot individual patients points onto the overall "cloud" of data.
 ################################################################################
-
-install.packages("corrplot")
-install.packages("DMwR")
+#install.packages("dplyr")
+#install.packages("rlang")
 install.packages("factoextra")
+install.packages("corrplot")
+install.packages("cowplot")
+install.packages("DMwR")
 
+# install packages
+library(factoextra)
 library(dplyr)
 library(lubridate)
 library(ggplot2)
@@ -30,8 +34,9 @@ library(corrplot)
 library(DMwR)
 library(Hmisc)
 
+# install libs
+
 source("~/scripts/2_cluster/utils/clustering_utils.R");
-source("~/scripts/2_cluster/utils/data_utils.R");
 source("~/scripts/2_cluster/utils/validity_metrics_utils.R");
 source("~/scripts/2_cluster/utils/outliers_utils.R");
 source("~/scripts/FitbitClusteringExperiments/new_dim_reduction_utils.r");
@@ -39,15 +44,19 @@ source("~/scripts/R_scripts/data_cleaning_utils.R");
 source("~/scripts/2_cluster/utils/data_distribution_utils.R")
 source("~/scripts/2_cluster/utils/clustering_tendency_utils.R");
 
+#source relevant scripts
 
-kActFeatures1 <- "act_featurised_sept_2020_no_treatments_with_0_breaths"
+kActFeatures1 <- "act_featurised_2020_12"
+#act table name
 
 kActTableNames = c(kActFeatures1)
+# list of all act table names
 
+# function below
 ClusterWithViz <- function(kActTableNames, kFeatureNames, funcOutliers, 
                            removeOutliers = T, doTendency=T, doKMeans = T, doHC = T, nClusters = 3, random_sample_size = 1){  
   
-    set.seed(41)
+    set.seed(41) # ensure reproducibility
     print("********** Loading data...")
     
     act = NULL
@@ -59,61 +68,64 @@ ClusterWithViz <- function(kActTableNames, kFeatureNames, funcOutliers,
         act = rbind(act, act_t)
     }
     
-    act = act[act$actDate <= '2019-11-01',]
+    # pull all data
+
+    #act = act[act$act_date <= '2019-11-01',]
     
     
     #print(nrow(act))
-    
-    act = act[act$patientId %in% link$patient_record_id,]
+    # make sure all patient in link file
+    act = act[act$patient_id %in% link$patient_record_id,]
     #print(nrow(act))
     
     # Raw numbers
     nrow(act)
     print(paste("Total treatments = ", nrow(act)))
-    #24434
+    #print number of treatments, 51562
     
     #Time period:
-    firstDate <- act %>% dplyr::select(actDate) %>% arrange(actDate) %>% slice(1)
-    # 2018-09-10
-    lastDate <- act %>% dplyr::select(actDate) %>% arrange(actDate) %>% slice(n())
-    #2019-05-31
+    firstDate <- act %>% dplyr::select(act_date) %>% arrange(act_date) %>% slice(1)
+    # firstDate
+    lastDate <- act %>% dplyr::select(act_date) %>% arrange(act_date) %>% slice(n())
+    # lastDate
     
     #Unique participants:
-    participants <- act %>% dplyr::select(patientId) %>% unique %>% summarise(n = n())
+    participants <- act %>% dplyr::select(patient_id) %>% unique %>% summarise(n = n())
     print(paste("Number of participants in dataset = ", participants))
     #139
     
     # Cleaning
     cleanDF  <- act %>%
-      filter(treatmentId != "zeroT") %>% # optionally filter out non-treatments/empty days
-      filter(pressuresDayCompletenessScore==1) %>% # only keep completed treatments (more than 15 seconds long)
-      filter(breathCount > 0) %>% #filter out the treatments with zero breaths
+      filter(treatment_id != "zeroT") %>% # optionally filter out non-treatments/empty days
+      filter(pressures_completeness_score==1) %>% # only keep completed treatments (more than 15 seconds long)
+      filter(breath_count > 0) %>% #filter out the treatments with zero breaths
       replace(., is.na(.), 0) # Replace NAs by 0, for now!
-      
-      
+
     # Numbers after cleaning:  
     print(paste("Filtered treatments = ", nrow(cleanDF)))
-    #14689
+    #51562
     
     # Treatments with sets:
-    sets <- cleanDF %>% dplyr::select(setCount) %>% filter(setCount >0) %>% summarise (n = n())
+    sets <- cleanDF %>% dplyr::select(set_count) %>% filter(set_count >0) %>% summarise (n = n())
     print(paste("Number of treatments with sets = ", sets))
-    #2164
+    #24275
 
     if (random_sample_size > 0 & random_sample_size  < 1) {
         nrow(cleanDF)
-        cleanDF <- cleanDF %>% sample_frac (size =random_sample_size)
+        cleanDF <- cleanDF %>% sample_frac (size = random_sample_size)
         cat(sprintf("Size after sampling: %s \n",  nrow(cleanDF)))
     }
+    # take random sample to cluster on
     
     cleanDF <- cleanDF %>%
       mutate(
-        treatmentDurationMins = treatmentLength/60
+        treatment_duration_mins = treatment_length/60
       )
-      
-    clusterDF <-  cleanDF  %>% dplyr::select(kFeatureNames) 
+    # convert treatment_length to treatment duration mins
     
-    str(clusterDF)
+    clusterDF <-  cleanDF  %>% dplyr::select(kFeatureNames) 
+    # select features
+    str(clusterDF)# diplay df
     nrow(clusterDF)
     
     
@@ -144,7 +156,6 @@ ClusterWithViz <- function(kActTableNames, kFeatureNames, funcOutliers,
     # Optionally remove outliers from some features
     ###################################################################################################
     #print(nrow(clusterDF))
-    bkp <-  clusterDF
     if (removeOutliers) {
        clusterDF <- funcOutliers(clusterDF, kFeatureNames)
        nrow(clusterDF)
@@ -152,25 +163,32 @@ ClusterWithViz <- function(kActTableNames, kFeatureNames, funcOutliers,
         print("********** Outliers are kept...")
     }    
     #print(nrow(clusterDF))
+    # outlier detected but threshold of 3% is breached so no outliers are removed
+
     ###################################################################################################
     # Scale
     ###################################################################################################
     
     print("********** Scaling...")
-    
+
     # For now, replace missing values by column average
     # Then scale with the z-score transform
-    unscaledDF <- clusterDF %>%
-                dplyr::mutate_if(is.numeric, list(~na_if(., Inf))) %>% 
-                dplyr::mutate_if(is.numeric, list(~na_if(., -Inf))) %>% 
-                dplyr::select_if(is.numeric) %>%
-                replace_na(as.list(colMeans(., na.rm=T))) # <- i don't know how to replace NA's with col means only for numerics
+    #unscaledDF <- clusterDF %>%
+    #            dplyr::mutate_if(is.numeric, list(~na_if(., Inf))) %>% 
+    #            dplyr::mutate_if(is.numeric, list(~na_if(., -Inf))) %>% 
+    #            dplyr::select_if(is.numeric) %>%
+    #            replace_na(as.list(colMeans(., na.rm=T))) # <- i don't know how to replace NA's with col means only for numerics
                 
+    unscaledDF <- clusterDF %>% mutate_if(is.numeric, funs(ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+    # na to column mean for all numeric columns
+            
     numDF <- unscaledDF %>% dplyr::mutate_if(is.numeric, funs(scale))
-    
+    # scale data with z-transform so values now sd distance to mean
+    # done to get scales of data to match
+    unscaledDF_num <- unscaledDF %>% select_if(is.numeric)
     # add back non numeric columns, hacky <- figure out a way to change this
-    idDF <- dplyr::select_if(clusterDF, negate(is.numeric))
-    numDF <- cbind(idDF, numDF)
+    #idDF <- dplyr::select_if(clusterDF, negate(is.numeric))
+    #numDF <- cbind(idDF, numDF)
     
     ###################################################################################################
     # Clustering tendency
@@ -197,7 +215,7 @@ ClusterWithViz <- function(kActTableNames, kFeatureNames, funcOutliers,
     # Run dimensionality reduction of the scaled
     # dataset (both PCA and UMAP) and plot the results
     pca <- PcaRunPlot(numDF, D1 = "PC1", D2 = "PC2")
-    umapScaled <- UmapRunPlot(numDF)
+    #umapScaled <- UmapRunPlot(numDF)
     
     #print(plot_grid(pca$plot, umapScaled$plot))
     
@@ -232,33 +250,32 @@ ClusterWithViz <- function(kActTableNames, kFeatureNames, funcOutliers,
                                         #xLim = c(-15, 15),
                                         #yLim = c(-5, 5),
                                         title = "PCA - kmeans")
-        kpca                                
-        kumap <- DimReductionScatterPlot(umapScaled$results,
-                                         "X1", "X2", 
-                                         as.character(kClusters$cluster),
-                                         size = sizePlot,
-                                         alpha = alphaPlot,
-                                         #xLim = c(-15, 15),
-                                         #yLim = c(-5, 10),
-                                         title ="umap - kmeans")
+        #kumap <- DimReductionScatterPlot(umapScaled$results,
+        #                                 "X1", "X2", 
+        #                                 as.character(kClusters$cluster),
+        #                                 size = sizePlot,
+        #                                 alpha = alphaPlot,
+        #                                 #xLim = c(-15, 15),
+        #                                 #yLim = c(-5, 10),
+        #                                 title ="umap - kmeans")
     
         #print(plot_grid(kpca, kumap))
-        plot(kpca)
+        #plot(kpca)
         ###################################################################################################
         # KMeans Cluster centroids
         ###################################################################################################
         
         # Print cluster centers and unscale them for the numbers to have meaning
         print("KMeans Cluster centers:")
-        print(unscale(kClusters$centers, scale(unscaledDF)))
+        print(unscale(kClusters$centers, scale(unscaledDF_num)))
         
         # Get clustering metric
         print("Cluster metrics (for KMeans clusters)")
         
         siKM <- SilhouetteValue(kClusters$cluster, numDF)
-        chKM <- CHIndex(kClusters$cluster, numDF)
+        #chKM <- CHIndex(kClusters$cluster, numDF)
         
-        #print(paste("Silhouette Value : ", siKM$clusterAvg))
+        print(paste("Silhouette Value : ", siKM$clusterAvg))
         #print(siKM$plot)
         #print(paste("CH Index for KMeans is", chKM))
         
@@ -280,56 +297,71 @@ ClusterWithViz <- function(kActTableNames, kFeatureNames, funcOutliers,
         #print(plot_grid(kpcaFF, kpcaTF, kpcaFT, kpcaTT))                                
         
         # Plot clustering on UMAP                  
-        kumapFF <- DimReductionScatterPlot(umapScaled$results, "X1", "X2", as.character(kClusters$cluster),
-                                         title = "umap - kmeans", include.chull = F, include.ellipse=F)
+        #kumapFF <- DimReductionScatterPlot(umapScaled$results, "X1", "X2", as.character(kClusters$cluster),
+        #                                 title = "umap - kmeans", include.chull = F, include.ellipse=F)
         
         # Overlay clustering centers
         pcaKCenters = data.frame(predict(pca$obj, kClusters$centers))
-        umapKCenters = data.frame(predict(umapScaled$obj, kClusters$centers))
+        # get lcuster centers for each pc, just a cross multiplication of two matrices basically
+        #umapKCenters = data.frame(predict(umapScaled$obj, kClusters$centers))
         
         kpca <- OverlayProjectionPoints(kpcaTF, pcaKCenters, "PC1", "PC2", title = "Kmeans Centroids on PCA projection", color="black", size=1, shape=8)
-        kumap <- OverlayProjectionPoints(kumapFF, umapKCenters, "X1", "X2", title = "Kmeans Centroids on UMAP projection", color="black", size=1, shape=8)
+        #kumap <- OverlayProjectionPoints(kumapFF, umapKCenters, "X1", "X2", title = "Kmeans Centroids on UMAP projection", color="black", size=1, shape=8)
         
         #print(plot_grid(kpca, kumap, siKM$plot))
-        
+        #print(plot_grid(kpca, siKM$plot))
+
         ###################################################################################################
         # Patient overlaid onto the clusters
         ###################################################################################################
         funcUID <- "2c5f35f9-68ba-4469-aae3-9fad7e3dd274"
-        uPcaDf <-  pca$results %>% filter(patientId == funcUID)
-        uUmapDf <- umapScaled$results %>% filter(patientId == funcUID)
+        uPcaDf <-  pca$results %>% filter(patient_id == funcUID)
+        #uUmapDf <- umapScaled$results %>% filter(patient_id == funcUID)
         
          
         upca <- OverlayProjectionPoints(kpcaTF, uPcaDf, "PC1", "PC2", title = 'Functional user', size=1, alpha = 0.5)
-        uumap <- OverlayProjectionPoints(kumapFF, uUmapDf, "X1", "X2", title = 'Functional user', size=1, alpha = 0.5) 
+        #uumap <- OverlayProjectionPoints(kumapFF, uUmapDf, "X1", "X2", title = 'Functional user', size=1, alpha = 0.5) 
     
         #print(plot_grid(upca, uumap))
+        print(upca)
         
-         # Get info fo saving clusters
+        # Get info fo saving clusters
+        # get cluster columns, centers
         k <- nClusters
-        clusterCols <-  kFeatureNames[!(kFeatureNames %in% c("patientId", "actDate"))] 
+        clusterCols <-  kFeatureNames[!(kFeatureNames %in% c("patient_id", "act_date"))] 
         clusterDF$clusterAssignment <- kClusters$cluster
+        # get assignment for each row
+
         pcaTransformed <- predict(pca$obj, numDF[clusterCols])#clusterDF[clusterCols])
+        # convert scaled values to pca 1,2,3
         clusterDF$PCA1 <- pcaTransformed[, 'PC1']
         clusterDF$PCA2 <- pcaTransformed[, 'PC2']
+        # retain pca1 and pc2 and places in clusterDF
+        # clusterDF is what is returned
         
         featureCenters <- data.frame(unscale(kClusters$centers, scale(unscaledDF[clusterCols])))
+        # get feature centers in values that make sense
         featureCenters %>% mutate(clusterAssignment = seq(1, k)) -> featureCenters
+        # create clusterAssignment column
         print(featureCenters)
         
-        pcaCenters <- predict(pca$obj, kClusters$centers) 
+        pcaCenters <- predict(pca$obj, kClusters$centers)
+        # get pca centers and place in df
         pcaCenters <- data.frame(pcaCenters)
         pcaCenters %>% mutate(clusterAssignment = seq(1, k), 
-                          patientId = 'centroid',
-                          actDate = NA,
+                          patient_id = 'centroid',
+                          act_date = NA,
                           isCentroid = TRUE,
                           PCA1 = PC1,
                           PCA2 = PC2) -> pcaCenters
+
+        # add cluster assignment and other various columns 
     
-        colsOutput <- c('patientId', 'actDate', 'PCA1', 'PCA2', 'clusterAssignment')
+        colsOutput <- c('patient_id', 'act_date', 'PCA1', 'PCA2', 'clusterAssignment')
         outDf <- rbind(clusterDF[colsOutput], pcaCenters[colsOutput])
         
-        return(list(clusterDF = clusterDF, pca = pca, umapScaled = umapScaled, kpcaTF = kpcaTF, uPcaDf = uPcaDf, kumapFF = kumapFF, uUmapDf = uUmapDf, outDf = outDf, "centroids"  = featureCenters))
+        #return(list(clusterDF = clusterDF, pca = pca, umapScaled = umapScaled, kpcaTF = kpcaTF, uPcaDf = uPcaDf, kumapFF = kumapFF, uUmapDf = uUmapDf, outDf = outDf, "centroids"  = featureCenters))
+        return(list(clusterDF = clusterDF, pca = pca, kpcaTF = kpcaTF, uPcaDf = uPcaDf, outDf = outDf, "centroids"  = featureCenters))
         
     
     } else {
@@ -413,8 +445,8 @@ ClusterWithViz <- function(kActTableNames, kFeatureNames, funcOutliers,
         # Patient overlaid onto the clusters
         ###################################################################################################
         funcUID <- "2c5f35f9-68ba-4469-aae3-9fad7e3dd274"
-        uPcaDf <-  pca$results %>% filter(patientId == funcUID)
-        uUmapDf <- umapScaled$results %>% filter(patientId == funcUID)
+        uPcaDf <-  pca$results %>% filter(patient_id == funcUID)
+        uUmapDf <- umapScaled$results %>% filter(patient_id == funcUID)
         upca <- OverlayProjectionPoints(hcpcaTF, uPcaDf, "PC1", "PC2", title = 'Functional user', size=1, alpha = 0.5)
         uumap <- OverlayProjectionPoints(hcumapFF, uUmapDf, "X1", "X2", title = 'Functional user', size=1, alpha = 0.5) 
     
@@ -433,10 +465,10 @@ ClusterWithViz <- function(kActTableNames, kFeatureNames, funcOutliers,
 
 PatientInteventPlots <- function(funcUID, actDate_start, actDate_end, title, pca, umapScaled, kpcaTF, uPcaDf, kumapFF, uUmapDf) {
     shortID <- substr(funcUID, 1,3)
-    uPcaDf <-  pca$results %>% filter(patientId == funcUID) %>%
-                               filter(actDate >= actDate_start & actDate <= actDate_end)
-    uUmapDf <- umapScaled$results %>% filter(patientId == funcUID) %>% 
-                                      filter(actDate >= actDate_start & actDate <= actDate_end)
+    uPcaDf <-  pca$results %>% filter(patient_id == funcUID) %>%
+                               filter(act_date >= actDate_start & act_date <= actDate_end)
+    uUmapDf <- umapScaled$results %>% filter(patient_id == funcUID) %>% 
+                                      filter(act_date >= actDate_start & act_date <= actDate_end)
         
     #plotTitle <- sprintf("id: %s, %s [%s, %s]", shortID, title, actDate_start, actDate_end)
     plotTitle <- title
@@ -447,6 +479,120 @@ PatientInteventPlots <- function(funcUID, actDate_start, actDate_end, title, pca
                                      "X1", "X2", title = plotTitle,
                                      size=1, alpha = 0.5) + theme(plot.title = element_text(size = 10))
    return(list(upca=upca, uumap = uumap))
+}
+
+
+PatientInteventPlots_noumap <- function(funcUID, actDate_start, actDate_end, title, pca, kpcaTF, uPcaDf) {
+    shortID <- substr(funcUID, 1,3)
+    uPcaDf <-  pca$results %>% filter(patient_id == funcUID) %>%
+                               filter(act_date >= actDate_start & act_date <= actDate_end)
+        
+    #plotTitle <- sprintf("id: %s, %s [%s, %s]", shortID, title, actDate_start, actDate_end)
+    plotTitle <- title
+    upca <- OverlayProjectionPoints(kpcaTF, uPcaDf, 
+                                   "PC1", "PC2", title = plotTitle,
+                                   size=1, alpha = 0.5) + theme(plot.title = element_text(size = 10))
+
+   return(list(upca=upca))
+}
+
+
+OutlierFunc3 <- function(clusterDF, kFeatureNames) {
+    IdentifyOutliers(clusterDF, kFeatureNames, verbose = TRUE)
+    nrow(clusterDF)
+    print("********** Removing outliers...")
+    kOutlierNames <- kFeatureNames
+    outlierDF <- clusterDF
+    clusterDF <- RemoveOutliers(outlierDF, kFeatureNames, thr = 0.073, verbose=TRUE)
+    nrow(clusterDF)
+    
+    #outlierDF <- clusterDF
+    #clusterDF <- RemoveOutliers(outlierDF, kOutlierNames[!(kOutlierNames %in% c("breathCount",  "relativeTreatmentDuration"))] , thr = 0.05,                               verbose=TRUE)
+    #nrow(clusterDF)
+    return(clusterDF)
+}
+
+kActFeatures1 <- "act_featurised_2020_12"
+
+actTableNames = c(kActFeatures1)
+    
+    
+# Specific saved experiments:
+
+
+OnePatientCluster_no_umap <- function(clusterDF, pca, kpcaTF, uPcaDf)
+{
+   # List of patient IDs (stored on DRE as CSV), hand-selected.
+  kPatientFile <- "~/documents/interesting_patients_ACT_clusters.csv"
+  patients <- read.csv(file = kPatientFile, header = FALSE, sep = ",", stringsAsFactors = FALSE)
+  patients <- patients[, 1]
+  str(clusterDF)
+ 
+  # Pick a particular patient  for the list.
+  n_patients <- length(patients) 
+  i <- 1
+
+  while (i <= n_patients) {
+    funcUID <- patients[i] 
+    cat(sprintf("Processsing patient # %s id=%s \n", i, funcUID))
+    linkMoresecData <- xap.read_table("linkMoresecure")
+    plinkMoresecData  <- linkMoresecData %>% filter(patient_record_id == funcUID)
+  
+    # No feedback plots
+    actDate_start <- lubridate::date("2018-09-01")
+    actDate_end <- lubridate::date(plinkMoresecData$date_feedback_start) - days(1)
+    res_noIntervent <- PatientInteventPlots_noumap(funcUID, actDate_start, actDate_end,
+                                            title = "No feedback",
+                                            pca, kpcaTF, uPcaDf)
+
+    # Feedback has been introduced
+    actDate_start <- actDate_end + days(1)
+    actDate_end <- lubridate::date(plinkMoresecData$date_gaming_start) - days(1)
+    res_feedb <- PatientInteventPlots_noumap(funcUID, actDate_start, actDate_end,
+                                            title = "Feedback introduced",
+                                            pca, kpcaTF, uPcaDf)
+                                            
+    # Gaming has been introduced                                        
+    actDate_start <- actDate_end + days(1)
+    actDate_end <- lubridate::date("2019-05-31")
+    res_game <- PatientInteventPlots_noumap(funcUID, actDate_start, actDate_end,
+                                            title = "Games introduced",
+                                            pca, kpcaTF, uPcaDf)  
+    print(plot_grid(res_noIntervent$upca, res_feedb$upca, res_game$upca,
+                    nrow = 1, ncol = 3))
+    i <- i + 1
+  }
+}
+
+###     Clustering on features as per July 25th feedback from GOSH
+Experiment3 <- function() {
+    featureNames <- c( "patient_id", "act_date",
+                     "breath_count", "mean_breath_duration",
+                     "mean_breath_amplitude")
+    
+    # Using the outlier func that knows how to deal with "treatmentDurationMins"               
+    cRes <- ClusterWithViz(actTableNames, featureNames, OutlierFunc3, removeOutliers = T, doTendency=F, doKMeans = T, doHC = F, nClusters = 4)
+
+    #OnePatientCluster_no_umap(cRes$clusterDF, cRes$pca, cRes$kpcaTF, cRes$uPcaDf)
+    #SaveOutput(cRes$outDf, "act_kmeans_exp_viz2", cRes$centroids, "act_kmeans_centroids_viz2")
+    pca_data <- test_patient('2c5f35f9-68ba-4469-aae3-9fad7e3dd274', cRes$clusterDF, cRes$pca)
+}
+
+test_patient <- function(uid, clusterDF, pca)
+{
+    funcUID <- uid
+    plinkMoresecData  <- link %>% filter(patient_record_id == funcUID)
+  
+    # No feedback plots
+    actDate_start <- lubridate::date("2018-09-01")
+    actDate_end <- lubridate::date(plinkMoresecData$date_feedback_start) - days(1)
+    
+    uPcaDf <-  pca$results %>% filter(patient_id == funcUID) %>%
+                               filter(act_date >= actDate_start & act_date <= actDate_end)
+    
+    uPcaDf <- merge()
+
+    return(uPcaDf)
 }
 
 
@@ -496,58 +642,22 @@ OnePatientCluster <- function(clusterDF, pca, umapScaled, kpcaTF, uPcaDf, kumapF
 }
 
 
-OutlierFunc3 <- function(clusterDF, kFeatureNames) {
-    IdentifyOutliers(clusterDF, kFeatureNames, verbose = TRUE)
-    nrow(clusterDF)
-    print("********** Removing outliers...")
-    kOutlierNames <- kFeatureNames
-    outlierDF <- clusterDF
-    clusterDF <- RemoveOutliers(outlierDF, c("breathCount",  "treatmentDurationMins"), thr = 0.073, verbose=TRUE)
-    nrow(clusterDF)
-    
-    outlierDF <- clusterDF
-    clusterDF <- RemoveOutliers(outlierDF, kOutlierNames[!(kOutlierNames %in% c("breathCount",  "relativeTreatmentDuration"))] , thr = 0.05,                               verbose=TRUE)
-    nrow(clusterDF)
-    return(clusterDF)
-}
-
-kActFeatures1 <- "act_featurised_sept_2020_no_treatments_with_0_breaths"
-
-actTableNames = c(kActFeatures1)
-    
-    
-# Specific saved experiments:
-    
-
-###     Clustering on features as per July 25th feedback from GOSH
-Experiment3 <- function() {
-    featureNames <- c( "patientId", "actDate",
-                     "breathCount", "meanBreathDuration", 
-                     "meanBreathAmplitude",
-                    "breathsWeekAdherenceScore",
-                    "treatmentDurationMins")
-    
-    # Using the outlier func that knows how to deal with "treatmentDurationMins"               
-    cRes <- ClusterWithViz(actTableNames, featureNames, OutlierFunc3, removeOutliers = T, doTendency=F, doKMeans = T, doHC = F, nClusters = 3)
-
-    #OnePatientCluster(cRes$clusterDF, cRes$pca, cRes$umapScaled, cRes$kpcaTF, cRes$uPcaDf, cRes$kumapFF, cRes$uUmapDf)
-    #SaveOutput(cRes$outDf, "act_kmeans_exp_viz2", cRes$centroids, "act_kmeans_centroids_viz2")
-}
 
 ###     Clustering consistency (for expriment #3)
 Experiment4 <- function() {
-    featureNames <- c( "patientId", "actDate",
-                     "breathCount", "meanBreathDuration", "sdBreathDuration", 
-                     "meanBreathAmplitude",  "sdBreathAmplitude",
-                    "treatmentRollWeekAdherenceScore", "breathRollWeekAdherenceScore",
-                    "treatmentDurationMins")
-    
+    featureNames <- c( "patient_id", "act_date",
+                     "breath_count", "mean_breath_duration",
+                     "mean_breath_amplitude",
+                    "treatment_week_adherence_score")
+
     # Using the outlier func that knows how to deal with "treatmentDurationMins"               
     cRes <- ClusterWithViz(actTableNames, featureNames, OutlierFunc3, 
                            removeOutliers = T, doTendency=F, doKMeans = T, doHC = F, nClusters = 4,
                            random_sample_size = 0.8)
 
+    #OnePatientCluster(cRes$clusterDF, cRes$pca, cRes$umapScaled, cRes$kpcaTF, cRes$uPcaDf, cRes$kumapFF, cRes$uUmapDf)
     OnePatientCluster(cRes$clusterDF, cRes$pca, cRes$umapScaled, cRes$kpcaTF, cRes$uPcaDf, cRes$kumapFF, cRes$uUmapDf)
+
 }
 
 SaveOutput <- function(outDf, tableNameOut, centroids, tableNameCentroids) {
@@ -555,7 +665,7 @@ SaveOutput <- function(outDf, tableNameOut, centroids, tableNameCentroids) {
     outDf$dateClustered <- timeNow
     centroids$dateClustered <- timeNow
     
-    colnames(outDf)[colnames(outDf)=="actDate"] <- "date"
+    colnames(outDf)[colnames(outDf)=="act_date"] <- "date"
 
     xap.db.writeframe(outDf, tableNameOut)
     xap.db.writeframe(centroids,  tableNameCentroids)
@@ -565,7 +675,7 @@ SaveOutput <- function(outDf, tableNameOut, centroids, tableNameCentroids) {
 ValidateOutputables <- function(tableNameOut, tableNameCentroids) {
    df <- xap.read_table(tableNameOut)
    centroids <- xap.read_table(tableNameCentroids)
-   colsOutput <- c('patientId', 'actDate', 'PCA1', 'PCA2', 'clusterAssignment')
+   colsOutput <- c('patient_id', 'act_date', 'PCA1', 'PCA2', 'clusterAssignment')
    
    colx <- 'PCA1'
    coly <- 'PCA2'
@@ -580,7 +690,7 @@ ValidateOutputables <- function(tableNameOut, tableNameCentroids) {
 }
 
 #data = xap.read_table('test_act_featurise_new')
-#data2 = data[data$actDate <= as.Date('2019-08-31'),]
+#data2 = data[data$act_date <= as.Date('2019-08-31'),]
 #xap.db.writeframe(data2,'featurised_august_31')
 # Exclude Endv
 
@@ -592,7 +702,7 @@ link = xap.read_table('linkMoresecure')
 
 fev = xap.read_table('patient_lung_function_results_spiro_gos_rlh_rbh')
 #link = xap.read_table('linkMoresecure')
-dataMerge = merge(cRes$clusterDF,link[,c('gos_id','patient_record_id','date_recruited','age_recruited')],by.x = 'patientId', by.y = 'patient_record_id', all.x = TRUE)
+dataMerge = merge(cRes$clusterDF,link[,c('gos_id','patient_record_id','date_recruited','age_recruited')],by.x = 'patient_id', by.y = 'patient_record_id', all.x = TRUE)
 #results = data.frame()
 #mvpa = xap.read_table('mvpa_count_prev_15')
 
@@ -618,7 +728,7 @@ fev2 = fev2[!is.na(fev2$fev1_pct_pred),]
 #}##
 
 #dataMerge %>%
-#    group_by(actDate,date_recruited,gos_id) %>%
+#    group_by(act_date,date_recruited,gos_id) %>%
 #        mutate(fev1_pct_pred = closest(date_recruited,gos_id))-> res
     
 res = data.frame()
@@ -642,10 +752,10 @@ for(g in unique(dataMerge$gos_id)){
 closest(dataMerge[1,]$date,dataMerge[1,]$gos_id )
 
 
-#res = merge(res,link[,c('patient_record_id','age_recruited')],by.x = 'patientId',by.y = 'patient_record_id',all.x = TRUE)
+#res = merge(res,link[,c('patient_record_id','age_recruited')],by.x = 'patient_id',by.y = 'patient_record_id',all.x = TRUE)
 #closest(dataMerge[1,]$date,dataMerge[1,]$gos_id ),
 #dataMerge = merge(dataMerge, fev[,c('hospital_no','fev1_z')], by.y = 'hospital_no', by.x = 'gos_id', all.x = TRUE)
-#res = merge(res,mvpa_summary,by.x = 'patientId',by.y = 'patient_record_id')
+#res = merge(res,mvpa_summary,by.x = 'patient_id',by.y = 'patient_record_id')
 
 library(ggplot2)
 ggplot(m, aes(x = activeMinsHr0, y = switch120, colour = clusterAssignment)) +
@@ -669,5 +779,3 @@ summary = summary[,1:26]
 colnames(summary)[which(names(summary) == "meanBreathDuration_count")] <- "no_of_days"
 
 xap.db.writeframe(summary,'act_clustering_fev_mvpa')
-
-
