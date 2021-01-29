@@ -1,4 +1,5 @@
 link = xap.read_table('linkMoresecure')
+stages = xap.read_table('study_stages')
 #linkGos = link[substr(link$study_uid,1,3) != '102',]# Exclude Start
 # Script to cluster and visualise clustering of ACT data
 # Used for NeurIPS ML4Health submission
@@ -42,7 +43,7 @@ source("~/scripts/2_cluster/utils/outliers_utils.R");
 source("~/scripts/FitbitClusteringExperiments/new_dim_reduction_utils.r");
 source("~/scripts/R_scripts/data_cleaning_utils.R");
 source("~/scripts/2_cluster/utils/data_distribution_utils.R")
-source("~/scripts/2_cluster/utils/clustering_tendency_utils.R");
+#source("~/scripts/2_cluster/utils/clustering_tendency_utils.R");
 
 #source relevant scripts
 
@@ -328,7 +329,7 @@ ClusterWithViz <- function(kActTableNames, kFeatureNames, funcOutliers,
         # Get info fo saving clusters
         # get cluster columns, centers
         k <- nClusters
-        clusterCols <-  kFeatureNames[!(kFeatureNames %in% c("patient_id", "act_date"))] 
+        clusterCols <-  kFeatureNames[!(kFeatureNames %in% c("patient_id", "act_date", "phase"))] 
         clusterDF$clusterAssignment <- kClusters$cluster
         # get assignment for each row
 
@@ -351,13 +352,14 @@ ClusterWithViz <- function(kActTableNames, kFeatureNames, funcOutliers,
         pcaCenters %>% mutate(clusterAssignment = seq(1, k), 
                           patient_id = 'centroid',
                           act_date = NA,
+                          phase = NA,
                           isCentroid = TRUE,
                           PCA1 = PC1,
                           PCA2 = PC2) -> pcaCenters
 
         # add cluster assignment and other various columns 
     
-        colsOutput <- c('patient_id', 'act_date', 'PCA1', 'PCA2', 'clusterAssignment')
+        colsOutput <- c('patient_id', 'act_date', "phase", 'PCA1', 'PCA2', 'clusterAssignment')
         outDf <- rbind(clusterDF[colsOutput], pcaCenters[colsOutput])
         
         #return(list(clusterDF = clusterDF, pca = pca, umapScaled = umapScaled, kpcaTF = kpcaTF, uPcaDf = uPcaDf, kumapFF = kumapFF, uUmapDf = uUmapDf, outDf = outDf, "centroids"  = featureCenters))
@@ -512,7 +514,7 @@ OutlierFunc3 <- function(clusterDF, kFeatureNames) {
     return(clusterDF)
 }
 
-kActFeatures1 <- "act_featurised_2020_12"
+kActFeatures1 <- "act_post_featurised_2020_12"
 
 actTableNames = c(kActFeatures1)
     
@@ -566,7 +568,7 @@ OnePatientCluster_no_umap <- function(clusterDF, pca, kpcaTF, uPcaDf)
 
 ###     Clustering on features as per July 25th feedback from GOSH
 Experiment3 <- function() {
-    featureNames <- c( "patient_id", "act_date",
+    featureNames <- c( "patient_id", "act_date","phase",
                      "breath_count", "mean_breath_duration",
                      "mean_breath_amplitude")
     
@@ -579,24 +581,46 @@ Experiment3 <- function() {
     # cRes$clusterDF contians all data with cluster features, pc1, pc2 and cluster assignment so this is the money dataframe
     # cRes$centroids contains center of each cluster for each cluster feature
 
-    pca_data <- test_patient('2c5f35f9-68ba-4469-aae3-9fad7e3dd274', cRes$clusterDF, cRes$pca)
+    pca_data <- test_patient(cRes$clusterDF)
 }
 
-test_patient <- function(uid, clusterDF, pca)
+test_patient <- function(clusterDF)
 {
-    funcUID <- uid
-    plinkMoresecData  <- link %>% filter(patient_record_id == funcUID)
-  
-    # No feedback plots
-    actDate_start <- lubridate::date("2018-09-01")
-    actDate_end <- lubridate::date(plinkMoresecData$date_feedback_start) - days(1)
-    
-    uPcaDf <-  pca$results %>% filter(patient_id == funcUID) %>%
-                               filter(act_date >= actDate_start & act_date <= actDate_end)
-    
-    uPcaDf <- merge()
+    for (uid in unique(clusterDF$patient_id))
+    {
+        funcUID <- uid
+        plinkMoresecData  <- link %>% filter(patient_record_id == funcUID)
+        stage_date <- stages %>% filter(patient_id == funcUID)
+        # No feedback plots
+        #actDate_start <- lubridate::date("2018-09-01")
+        #actDate_end <- lubridate::date(plinkMoresecData$date_feedback_start) - days(1)
+        start_date = stage_date$date_start
+        feedback_start =  stage_date$feedback_start
+        gaming_start = stage_date$games_start
+        gaming_end = stage_date$games_end
+        feedback_end = stage_date$feedback_end
+        withdrawn_date = stage_date$withdrawn
+        end_date = stage_date$end
+        uPcaDf <-  clusterDF %>% filter(patient_id == funcUID)
+        title = uid
+        p = ggplot(uPcaDf, aes(x=act_date, y=clusterAssignment, color= phase)) +
+            geom_point() + geom_vline(xintercept = start_date) +
+            geom_vline(xintercept = feedback_start) +
+            geom_vline(xintercept = gaming_start) +
+            geom_vline(xintercept = gaming_end) +
+            geom_vline(xintercept = feedback_end) +
+            geom_vline(xintercept = withdrawn_date) +
+            geom_vline(xintercept = end_date) + 
+            ggtitle(title)
+        
+        
+        dir = '/home/sejjkk4/scripts/cluster_stages_images'
+        name = paste(title,'act_cluster_by_stage.png',sep = '_')
+        fname = paste(dir,name, sep ='/')
+        ggsave(file = fname, p)
 
-    return(uPcaDf)
+        
+    }
 }
 
 

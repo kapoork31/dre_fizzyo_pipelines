@@ -771,31 +771,31 @@ featurise_fitbit_combined <- function(
                               get_active_window,
                               val_col = "value_steps")) %>%
     # active minutes steps
-    mutate(active_mins_steps_0 = map_dbl(data,
+    mutate(active_mins_steps_consec_0 = map_dbl(data,
                                   calc_active_minutes,
                                   consec_nb = 0,
                                   threshold = step_active,
                                   val_col = "value_steps",
                                   sort_cols = c("time")),
-           active_mins_steps_2 = map_dbl(data,
+           active_mins_steps_consec_2 = map_dbl(data,
                                       calc_active_minutes,
                                       consec_nb = 2,
                                       threshold = step_active,
                                       val_col = "value_steps",
                                       sort_cols = c("time")),
-           active_mins_steps_5 = map_dbl(data,
+           active_mins_steps_consec_5 = map_dbl(data,
                                       calc_active_minutes,
                                       consec_nb = 5,
                                       threshold = step_active,
                                       val_col = "value_steps",
                                       sort_cols = c("time")),
-           active_mins_steps_10 = map_dbl(data,
+           active_mins_steps_consec_10 = map_dbl(data,
                                       calc_active_minutes,
                                       consec_nb = 10,
                                       threshold = step_active,
                                       val_col = "value_steps",
                                       sort_cols = c("time")),
-           active_mins_steps_20 = map_dbl(data,
+           active_mins_steps_consec_20 = map_dbl(data,
                                       calc_active_minutes,
                                       consec_nb = 20,
                                       threshold = step_active,
@@ -939,7 +939,7 @@ featurise_fitbit_combined <- function(
                         conn
                     )
 
-    get # all 3 mvpa thresholds and add to returned df
+    #get all 3 mvpa thresholds and add to returned df
     thresh <- (thresh_data %>% pull(!!as.name(thresh14)))[1]
     thresh_low <- (thresh_data %>% pull(!!as.name(thresh14_low)))[1]
     thresh_high <- (thresh_data %>% pull(!!as.name(thresh14_high)))[1]
@@ -963,11 +963,20 @@ featurise_fitbit_combined <- function(
     # get data where hr <= thresh and add mvpa values to returned df
     non_active_hr <- fitbit_data %>% filter(!!as.name(hr_column) <= thresh)
     featurised_fitbit_data$mvpa_15_prev_method <- length(times_in)
-    featurised_fitbit_data$mvpa_15_prev_method2 <- consecutive(times_in, 2)
-    featurised_fitbit_data$mvpa_15_prev_method3 <- consecutive(times_in, 3)
-    featurised_fitbit_data$mvpa_15_prev_method5 <- consecutive(times_in, 5)
-    featurised_fitbit_data$mvpa_15_prev_method10 <- consecutive(times_in, 10)
-    featurised_fitbit_data$mvpa_15_prev_method20 <- consecutive(times_in, 20)
+    featurised_fitbit_data$mvpa_15_prev_method_consec_2 <- consecutive(
+        times_in, 2)
+
+    featurised_fitbit_data$mvpa_15_prev_method_consec_3 <- consecutive(
+        times_in, 3)
+
+    featurised_fitbit_data$mvpa_15_prev_method_consec_5 <- consecutive(
+        times_in, 5)
+
+    featurised_fitbit_data$mvpa_15_prev_method_consec_10 <- consecutive(
+        times_in, 10)
+
+    featurised_fitbit_data$mvpa_15_prev_method_consec_20 <- consecutive(
+        times_in, 20)
 
     # mvpa between 8-21 added to returned df
     featurised_fitbit_data$mvpa_15_prev_method_ap_8_21 <-
@@ -997,19 +1006,19 @@ featurise_fitbit_combined <- function(
     featurised_fitbit_data$active_mins_hr_steps_thresh <-
                 length(active_mins_hr_steps)
 
-    featurised_fitbit_data$active_mins_hr_steps_thresh2 <-
+    featurised_fitbit_data$active_mins_hr_steps_thresh_consec_2 <-
                 consecutive(active_mins_hr_steps, 2)
 
-    featurised_fitbit_data$active_mins_hr_steps_thresh3 <-
+    featurised_fitbit_data$active_mins_hr_steps_thresh_consec_3 <-
                 consecutive(active_mins_hr_steps, 3)
 
-    featurised_fitbit_data$active_mins_hr_steps_thresh5 <-
+    featurised_fitbit_data$active_mins_hr_steps_thresh_consec_5 <-
                 consecutive(active_mins_hr_steps, 5)
 
-    featurised_fitbit_data$active_mins_hr_steps_thresh10 <-
+    featurised_fitbit_data$active_mins_hr_steps_thresh_consec_10 <-
                 consecutive(active_mins_hr_steps, 10)
 
-    featurised_fitbit_data$active_mins_hr_steps_thresh20 <-
+    featurised_fitbit_data$active_mins_hr_steps_thresh_consec_20 <-
                 consecutive(active_mins_hr_steps, 20)
 
     # add combo step and mvpa features to returned df
